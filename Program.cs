@@ -1,67 +1,130 @@
-﻿// * Д.З. Реалізувати інтерфейс для запуску/зупинки сервера
-//  * > Server OFF
-//  * > 1 - Start
-//  * > 0 - Exit
-//  * >  1
-//  * > Server ON
-//  * > 2 - Stop
-//  * > 0 - Exit
-//  * >  0
-//  * >  Server Stopped
-//  * 
-//  * Реалізувати команду генерації випадкового значення
-//  * Command: 'RND-FILE'   | випадковий рядок довжиною 10 символів
-//  * Payload: 10           | який може бути іменем файлу (не містить * / \ ? .. )
-//  * 
-//  * Command: 'RND-UINT'   | випадкове беззнакове число у діапазоні
-//  * Payload: 10000        | 0 -- 10000
-//  */
-
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using ServerApp;
+﻿using System;
 using System.IO;
-using System.Text.RegularExpressions;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Net.Sockets;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Serilog;
-using Serilog.Events;
-using Serilog.Formatting.Compact;
+using System.Linq;
 
-
-
-namespace ServerApp
+namespace MyApp
 {
-    class Program
+    class ServerApp
     {
-        static async Task Main(string[] args)
-        {
-            var host = Host.CreateDefaultBuilder(args)
-                .ConfigureServices((context, services) =>
-                {
-                    services.AddSingleton<IRandomService, RandomService>();
-                    services.AddSingleton<ICommandHandler, CommandHandler>();
-                    services.AddHostedService<Server>();
-                })
-                .UseSerilog((context, configuration) =>
-                {
-                    configuration
-                        .MinimumLevel.Debug()
-                        .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
-                        .Enrich.FromLogContext()
-                        .WriteTo.Console(new CompactJsonFormatter())
-                        .WriteTo.File(new CompactJsonFormatter(), "logs/log-.json", rollingInterval: RollingInterval.Day);
-                })
-                .Build();
+        private static bool isServerOn = false;
+        private static Random random = new Random();
+        private const string SafeFileNameChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-";
 
-            await host.RunAsync();
+        static void Main()
+        {
+            while (true)
+            {
+                DisplayMenu();
+                string input = Console.ReadLine();
+                Console.WriteLine($"* > {input}");
+
+                if (isServerOn)
+                {
+                    ProcessServerOnInput(input);
+                }
+                else
+                {
+                    ProcessServerOffInput(input);
+                }
+            }
+        }
+
+        static void DisplayMenu()
+        {
+            Console.WriteLine(isServerOn ? "* > Server ON" : "* > Server OFF");
+            if (isServerOn)
+            {
+                Console.WriteLine("* > 2 - Stop");
+                Console.WriteLine("* > 'RND-FILE' [length]");
+                Console.WriteLine("* > 'RND-UINT' [max_value]");
+            }
+            else
+            {
+                Console.WriteLine("* > 1 - Start");
+            }
+            Console.WriteLine("* > 0 - Exit");
+            Console.Write("* > ");
+        }
+
+        static void ProcessServerOffInput(string input)
+        {
+            switch (input)
+            {
+                case "1":
+                    isServerOn = true;
+                    Console.WriteLine("Server Started");
+                    break;
+                case "0":
+                    Console.WriteLine("Server Stopped. Exiting...");
+                    Environment.Exit(0);
+                    break;
+                default:
+                    Console.WriteLine("Unknown command. Use 1 or 0.");
+                    break;
+            }
+        }
+
+        static void ProcessServerOnInput(string input)
+        {
+            string[] parts = input.Split(' ');
+            string command = parts[0].ToUpper();
+            string payload = parts.Length > 1 ? parts[1] : null;
+
+            switch (command)
+            {
+                case "2":
+                    isServerOn = false;
+                    Console.WriteLine("Server Stopped");
+                    break;
+                case "0":
+                    Console.WriteLine("Server Stopped. Exiting...");
+                    Environment.Exit(0);
+                    break;
+                case "RND-FILE":
+                    if (payload != null && int.TryParse(payload, out int fileLength))
+                    {
+                        string randomFileName = GenerateRandomFileName(fileLength);
+                        Console.WriteLine($"Generated RND-FILE: {randomFileName}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid payload for RND-FILE. Usage: RND-FILE [length]");
+                    }
+                    break;
+                case "RND-UINT":
+                    if (payload != null && uint.TryParse(payload, out uint maxValue))
+                    {
+                        if (maxValue <= int.MaxValue)
+                        {
+                            int randomUint = random.Next(0, (int)maxValue + 1); 
+                            Console.WriteLine($"Generated RND-UINT (0-{maxValue}): {randomUint}");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Payload for RND-UINT is too large for current implementation (max int allowed).");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid payload for RND-UINT. Usage: RND-UINT [max_value]");
+                    }
+                    break;
+                default:
+                    Console.WriteLine("Unknown command. Use 2, 0, RND-FILE, or RND-UINT.");
+                    break;
+            }
+        }
+
+        static string GenerateRandomFileName(int length)
+        {
+            var result = new StringBuilder(length);
+            for (int i = 0; i < length; i++)
+            {
+                result.Append(SafeFileNameChars[random.Next(SafeFileNameChars.Length)]);
+            }
+            return result.ToString();
         }
     }
 }
+
