@@ -36,8 +36,8 @@ namespace MyApp
             if (isServerOn)
             {
                 Console.WriteLine("* > 2 - Stop");
-                Console.WriteLine("* > 'RND-FILE' [length]");
-                Console.WriteLine("* > 'RND-UINT' [max_value]");
+                Console.WriteLine("* > 3 - 'RND-FILE' [length]");
+                Console.WriteLine("* > 4 - 'RND-UINT' [max_value]");
             }
             else
             {
@@ -81,7 +81,7 @@ namespace MyApp
                     Console.WriteLine("Server Stopped. Exiting...");
                     Environment.Exit(0);
                     break;
-                case "RND-FILE":
+                case "3":
                     if (payload != null && int.TryParse(payload, out int fileLength))
                     {
                         string randomFileName = GenerateRandomFileName(fileLength);
@@ -92,7 +92,7 @@ namespace MyApp
                         Console.WriteLine("Invalid payload for RND-FILE. Usage: RND-FILE [length]");
                     }
                     break;
-                case "RND-UINT":
+                case "4":
                     if (payload != null && uint.TryParse(payload, out uint maxValue))
                     {
                         if (maxValue <= int.MaxValue)
